@@ -18,6 +18,19 @@ const pacman = {
     nextDirection: "LEFT"
 };
 
+// -------------------------
+// BLINKY
+// -------------------------
+
+const blinky = {
+    x: 332.5,
+    y: 367.5,
+    radius: 15,
+    speed: 1.5,
+    direction: "LEFT",
+    color: "red"
+};
+
 const TILE_SIZE = 35;
 
 const maze = [
@@ -156,6 +169,108 @@ function canPacmanMoveTo(x, y) {
         !isWall(x - r, y + r) &&
         !isWall(x + r, y + r)
     );
+}
+
+function canGhostMoveTo(ghost, x, y) {
+
+    const r = ghost.radius - 2;
+
+    return (
+        !isWall(x - r, y - r) &&
+        !isWall(x + r, y - r) &&
+        !isWall(x - r, y + r) &&
+        !isWall(x + r, y + r)
+    );
+}
+
+function getGhostNextPosition(ghost, direction) {
+
+    let x = ghost.x;
+    let y = ghost.y;
+
+    switch (direction) {
+
+        case "UP":
+            y -= ghost.speed;
+            break;
+
+        case "DOWN":
+            y += ghost.speed;
+            break;
+
+        case "LEFT":
+            x -= ghost.speed;
+            break;
+
+        case "RIGHT":
+            x += ghost.speed;
+            break;
+    }
+
+    return { x, y };
+}
+
+function chooseGhostDirection(ghost) {
+
+    const directions = [
+        "UP",
+        "DOWN",
+        "LEFT",
+        "RIGHT"
+    ];
+
+    const possibleDirections = [];
+
+    for (let direction of directions) {
+
+        const nextPosition =
+            getGhostNextPosition(ghost, direction);
+
+        if (
+            canGhostMoveTo(
+                ghost,
+                nextPosition.x,
+                nextPosition.y
+            )
+        ) {
+            possibleDirections.push(direction);
+        }
+    }
+
+    if (possibleDirections.length > 0) {
+
+        const randomIndex = Math.floor(
+            Math.random() * possibleDirections.length
+        );
+
+        ghost.direction =
+            possibleDirections[randomIndex];
+    }
+}
+
+function updateGhost(ghost) {
+
+    let nextPosition =
+        getGhostNextPosition(
+            ghost,
+            ghost.direction
+        );
+
+    if (
+        canGhostMoveTo(
+            ghost,
+            nextPosition.x,
+            nextPosition.y
+        )
+    ) {
+        ghost.x = nextPosition.x;
+        ghost.y = nextPosition.y;
+    }
+
+    else {
+
+        chooseGhostDirection(ghost);
+    }
 }
 
 function getNextPosition(direction) {
@@ -337,6 +452,101 @@ function activatePowerMode() {
     }, 8000);
 }
 
+function drawGhost(ghost) {
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ghost.x,
+        ghost.y,
+        ghost.radius,
+        Math.PI,
+        0
+    );
+
+    ctx.lineTo(
+        ghost.x + ghost.radius,
+        ghost.y + ghost.radius
+    );
+
+    ctx.lineTo(
+        ghost.x + ghost.radius / 2,
+        ghost.y + ghost.radius - 5
+    );
+
+    ctx.lineTo(
+        ghost.x,
+        ghost.y + ghost.radius
+    );
+
+    ctx.lineTo(
+        ghost.x - ghost.radius / 2,
+        ghost.y + ghost.radius - 5
+    );
+
+    ctx.lineTo(
+        ghost.x - ghost.radius,
+        ghost.y + ghost.radius
+    );
+
+    ctx.closePath();
+
+    if (powerMode) {
+        ctx.fillStyle = "blue";
+    } else {
+        ctx.fillStyle = ghost.color;
+    }
+
+    ctx.fill();
+
+
+    // Eyes
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+    ctx.arc(
+        ghost.x - 6,
+        ghost.y - 3,
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.arc(
+        ghost.x + 6,
+        ghost.y - 3,
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    // Pupils
+    ctx.fillStyle = "black";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ghost.x - 6,
+        ghost.y - 3,
+        2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.arc(
+        ghost.x + 6,
+        ghost.y - 3,
+        2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
 // -------------------------
 // GAME LOOP
 // -------------------------
@@ -351,8 +561,11 @@ function gameLoop() {
     );
 
     updatePacman();
+    updateGhost(blinky);
+
     drawMaze();
     drawPacman();
+    drawGhost(blinky);
 
     requestAnimationFrame(gameLoop);
 }

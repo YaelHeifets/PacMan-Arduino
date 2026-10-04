@@ -66,3 +66,15 @@ canvas {
     text-align: center;
     color: #aaa;
 }
+
+#restartButton {
+    display: none;
+    margin: 15px auto 0;
+    padding: 10px 20px;
+    background-color: #ffff00;
+    color: #000;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}

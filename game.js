@@ -230,6 +230,9 @@ function handleGhostCollision(ghost) {
 
             document.getElementById("status").textContent =
                 "GAME OVER";
+
+            document.getElementById("restartButton").style.display =
+                "block";
         }
 
         else {
@@ -726,6 +729,45 @@ function resetPacman() {
     blinky.lastDecisionCol = -1;
 }
 
+function restartGame() {
+
+    score = 0;
+    lives = 3;
+    gameOver = false;
+    powerMode = false;
+
+    // Stop an old Power Mode timer
+    if (powerTimer !== null) {
+        clearTimeout(powerTimer);
+        powerTimer = null;
+    }
+
+    // Restore all dots and Power Pellets
+    for (let row = 0; row < maze.length; row++) {
+        mazeGrid[row] = maze[row].split("");
+    }
+
+    document.getElementById("score").textContent = score;
+    document.getElementById("lives").textContent = lives;
+
+    document.getElementById("status").textContent =
+        "Use arrow keys to move";
+
+    document.getElementById("restartButton").style.display =
+        "none";
+
+    resetPacman();
+
+    requestAnimationFrame(gameLoop);
+}
+
+document
+    .getElementById("restartButton")
+    .addEventListener(
+        "click",
+        restartGame
+    );
+    
 // -------------------------
 // GAME LOOP
 // -------------------------

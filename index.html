@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man Arduino Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="game-container">
+
+        <h1>PAC-MAN</h1>
+
+        <div class="score-board">
+            <div>
+                SCORE
+                <span id="score">0</span>
+            </div>
+
+            <div>
+                HIGH SCORE
+                <span id="highScore">0</span>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-info">
+            <span id="status">Use arrow keys to move</span>
+        </div>
+
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

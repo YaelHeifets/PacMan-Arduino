@@ -143,7 +143,8 @@ function isWall(x, y) {
         return true;
     }
 
-    return maze[row][col] === "#";}
+    return mazeGrid[row][col] === "#";
+}
 
 function canPacmanMoveTo(x, y) {
 
@@ -190,7 +191,7 @@ function getNextPosition(direction) {
 
 function updatePacman() {
 
-    // First try the direction requested by the player
+    // Try the direction requested by the player
     const requestedMove = getNextPosition(
         pacman.nextDirection
     );
@@ -204,16 +205,15 @@ function updatePacman() {
         pacman.direction = pacman.nextDirection;
     }
 
-
     // Continue moving in the current direction
     const nextMove = getNextPosition(
         pacman.direction
     );
 
     if (
-    canPacmanMoveTo(
-        nextMove.x,
-        nextMove.y
+        canPacmanMoveTo(
+            nextMove.x,
+            nextMove.y
         )
     ) {
         pacman.x = nextMove.x;
@@ -244,13 +244,20 @@ function drawPacman() {
 
     ctx.closePath();
 
-    ctx.fillStyle = "yellow";
+    if (powerMode) {
+    ctx.fillStyle = "#ffff80";
+    } 
+    else {
+        ctx.fillStyle = "yellow";
+    }
     ctx.fill();
 }
 
 let score = 0;
 
 let highScore = localStorage.getItem("pacmanHighScore");
+let powerMode = false;
+let powerTimer = null;
 
 if (highScore === null) {
     highScore = 0;
@@ -284,12 +291,50 @@ function eatDot() {
     const col = Math.floor(pacman.x / TILE_SIZE);
     const row = Math.floor(pacman.y / TILE_SIZE);
 
-    if (mazeGrid[row][col] === ".") {
+    const tile = mazeGrid[row][col];
+    console.log("row:", row, "col:", col, "tile:", tile);
+
+    if (tile === ".") {
 
         mazeGrid[row][col] = " ";
 
         addScore(10);
     }
+
+    else if (tile === "o") {
+
+        mazeGrid[row][col] = " ";
+
+        addScore(50);
+
+        activatePowerMode();
+    }
+}
+
+function activatePowerMode() {
+
+    powerMode = true;
+
+    document.getElementById("status").textContent =
+        "POWER MODE!";
+
+    // If Pac-Man eats another Power Pellet
+    // while Power Mode is already active,
+    // restart the timer.
+    if (powerTimer !== null) {
+        clearTimeout(powerTimer);
+    }
+
+    powerTimer = setTimeout(function() {
+
+        powerMode = false;
+
+        document.getElementById("status").textContent =
+            "Use arrow keys to move";
+
+        powerTimer = null;
+
+    }, 8000);
 }
 
 // -------------------------

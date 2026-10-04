@@ -11,12 +11,89 @@ canvas.height = 700;
 
 const pacman = {
     x: 350,
-    y: 500,
+    y: 612.5,
     radius: 17,
     speed: 3,
-    direction: "RIGHT"
+    direction: "LEFT",
+    nextDirection: "LEFT"
 };
 
+const TILE_SIZE = 35;
+
+const maze = [
+    "####################",
+    "#........##........#",
+    "#.####.#.##.#.####.#",
+    "#o####.#.##.#.####o#",
+    "#..................#",
+    "#.####.######.####.#",
+    "#......##..##......#",
+    "######.##..##.######",
+    "######........######",
+    "######.##--##.######",
+    "#........--........#",
+    "######.######.######",
+    "######........######",
+    "#........##........#",
+    "#.####.#.##.#.####.#",
+    "#o..##........##..o#",
+    "###.##.######.##.###",
+    "#..................#",
+    "#.################.#",
+    "####################"
+];
+
+function drawMaze() {
+
+    for (let row = 0; row < maze.length; row++) {
+
+        for (let col = 0; col < maze[row].length; col++) {
+
+            const tile = maze[row][col];
+
+            const x = col * TILE_SIZE;
+            const y = row * TILE_SIZE;
+
+            if (tile === "#") {
+                ctx.fillStyle = "#2121ff";
+                ctx.fillRect(
+                    x,
+                    y,
+                    TILE_SIZE,
+                    TILE_SIZE
+                );
+            }
+
+            else if (tile === ".") {
+                ctx.beginPath();
+                ctx.arc(
+                    x + TILE_SIZE / 2,
+                    y + TILE_SIZE / 2,
+                    3,
+                    0,
+                    Math.PI * 2
+                );
+
+                ctx.fillStyle = "#ffb8ae";
+                ctx.fill();
+            }
+
+            else if (tile === "o") {
+                ctx.beginPath();
+                ctx.arc(
+                    x + TILE_SIZE / 2,
+                    y + TILE_SIZE / 2,
+                    7,
+                    0,
+                    Math.PI * 2
+                );
+
+                ctx.fillStyle = "#ffb8ae";
+                ctx.fill();
+            }
+        }
+    }
+}
 
 // -------------------------
 // INPUT
@@ -24,7 +101,7 @@ const pacman = {
 
 function handleDirection(direction) {
 
-    pacman.direction = direction;
+    pacman.nextDirection = direction;
 
 }
 
@@ -49,6 +126,59 @@ document.addEventListener("keydown", function(event) {
 
 });
 
+function isWall(x, y) {
+
+    const col = Math.floor(x / TILE_SIZE);
+    const row = Math.floor(y / TILE_SIZE);
+
+    // Outside the maze = wall
+    if (
+        row < 0 ||
+        row >= maze.length ||
+        col < 0 ||
+        col >= maze[0].length
+    ) {
+        return true;
+    }
+
+    return maze[row][col] === "#";
+}
+
+function canPacmanMoveTo(x, y) {
+
+    const r = pacman.radius - 2;
+
+    return (
+        !isWall(x - r, y - r) &&
+        !isWall(x + r, y - r) &&
+        !isWall(x - r, y + r) &&
+        !isWall(x + r, y + r)
+    );
+}
+
+function getNextPosition(direction) {
+
+    let x = pacman.x;
+    let y = pacman.y;
+
+    if (direction === "UP") {
+        y -= pacman.speed;
+    }
+
+    else if (direction === "DOWN") {
+        y += pacman.speed;
+    }
+
+    else if (direction === "LEFT") {
+        x -= pacman.speed;
+    }
+
+    else if (direction === "RIGHT") {
+        x += pacman.speed;
+    }
+
+    return { x, y };
+}
 
 // -------------------------
 // UPDATE
@@ -56,39 +186,35 @@ document.addEventListener("keydown", function(event) {
 
 function updatePacman() {
 
-    if (pacman.direction === "UP") {
-        pacman.y -= pacman.speed;
+    // First try the direction requested by the player
+    const requestedMove = getNextPosition(
+        pacman.nextDirection
+    );
+
+    if (
+        canPacmanMoveTo(
+            requestedMove.x,
+            requestedMove.y
+        )
+    ) {
+        pacman.direction = pacman.nextDirection;
     }
 
-    else if (pacman.direction === "DOWN") {
-        pacman.y += pacman.speed;
-    }
 
-    else if (pacman.direction === "LEFT") {
-        pacman.x -= pacman.speed;
-    }
+    // Continue moving in the current direction
+    const nextMove = getNextPosition(
+        pacman.direction
+    );
 
-    else if (pacman.direction === "RIGHT") {
-        pacman.x += pacman.speed;
+    if (
+        canPacmanMoveTo(
+            nextMove.x,
+            nextMove.y
+        )
+    ) {
+        pacman.x = nextMove.x;
+        pacman.y = nextMove.y;
     }
-
-    // Keep Pac-Man inside the canvas
-    if (pacman.x - pacman.radius < 0) {
-        pacman.x = pacman.radius;
-    }
-
-    if (pacman.x + pacman.radius > canvas.width) {
-        pacman.x = canvas.width - pacman.radius;
-    }
-
-    if (pacman.y - pacman.radius < 0) {
-        pacman.y = pacman.radius;
-    }
-
-    if (pacman.y + pacman.radius > canvas.height) {
-        pacman.y = canvas.height - pacman.radius;
-    }
-
 }
 
 
@@ -131,7 +257,7 @@ function gameLoop() {
     );
 
     updatePacman();
-
+    drawMaze();
     drawPacman();
 
     requestAnimationFrame(gameLoop);

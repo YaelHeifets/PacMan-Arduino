@@ -228,11 +228,11 @@ function handleGhostCollision(ghost) {
 
             gameOver = true;
 
-            document.getElementById("status").textContent =
-                "GAME OVER";
+            document.getElementById("finalScore").textContent =
+                score;
 
-            document.getElementById("restartButton").style.display =
-                "block";
+            document.getElementById("gameOverModal").style.display =
+                "flex";
         }
 
         else {
@@ -539,6 +539,8 @@ let powerMode = false;
 let powerTimer = null;
 let lives = 3;
 let gameOver = false;
+let serialPort;
+let serialReader;
 
 if (highScore === null) {
     highScore = 0;
@@ -753,7 +755,7 @@ function restartGame() {
     document.getElementById("status").textContent =
         "Use arrow keys to move";
 
-    document.getElementById("restartButton").style.display =
+    document.getElementById("gameOverModal").style.display =
         "none";
 
     resetPacman();
@@ -762,12 +764,46 @@ function restartGame() {
 }
 
 document
-    .getElementById("restartButton")
+    .getElementById("modalRestartButton")
     .addEventListener(
         "click",
         restartGame
     );
-    
+
+async function connectController() {
+
+    try {
+
+        serialPort = await navigator.serial.requestPort();
+
+        await serialPort.open({
+            baudRate: 9600
+        });
+
+        document.getElementById("connectButton").textContent =
+            "CONTROLLER CONNECTED";
+
+        document.getElementById("status").textContent =
+            "Arduino controller connected";
+
+        // readSerialData();
+    }
+
+    catch (error) {
+
+        console.log(
+            "Serial connection error:",
+            error
+        );
+    }
+}
+
+document
+    .getElementById("connectButton")
+    .addEventListener(
+        "click",
+        connectController
+    );
 // -------------------------
 // GAME LOOP
 // -------------------------

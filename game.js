@@ -25,10 +25,14 @@ const pacman = {
 const blinky = {
     x: 332.5,
     y: 367.5,
+    startX: 332.5,
+    startY: 367.5,
     radius: 15,
     speed: 1.5,
     direction: "LEFT",
-    color: "red"
+    color: "red",
+    lastDecisionRow: -1,
+    lastDecisionCol: -1
 };
 
 const TILE_SIZE = 35;
@@ -120,7 +124,6 @@ function handleDirection(direction) {
 
 }
 
-
 document.addEventListener("keydown", function(event) {
 
     if (event.key === "ArrowUp") {
@@ -183,6 +186,58 @@ function canGhostMoveTo(ghost, x, y) {
     );
 }
 
+function checkGhostCollision(ghost) {
+
+    const dx = pacman.x - ghost.x;
+    const dy = pacman.y - ghost.y;
+
+    const distance = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    return distance <
+        pacman.radius + ghost.radius;
+}
+
+function handleGhostCollision(ghost) {
+
+    if (!checkGhostCollision(ghost)) {
+        return;
+    }
+
+    if (powerMode) {
+
+        addScore(200);
+
+        ghost.x = ghost.startX;
+        ghost.y = ghost.startY;
+        ghost.direction = "LEFT";
+
+        ghost.lastDecisionRow = -1;
+        ghost.lastDecisionCol = -1;
+    }
+
+    else {
+
+        lives--;
+
+        document.getElementById("lives").textContent =
+            lives;
+
+        if (lives <= 0) {
+
+            gameOver = true;
+
+            document.getElementById("status").textContent =
+                "GAME OVER";
+        }
+
+        else {
+            resetPacman();
+        }
+    }
+}
+
 function getGhostNextPosition(ghost, direction) {
 
     let x = ghost.x;
@@ -219,42 +274,149 @@ function chooseGhostDirection(ghost) {
         "RIGHT"
     ];
 
+    const oppositeDirections = {
+        UP: "DOWN",
+        DOWN: "UP",
+        LEFT: "RIGHT",
+        RIGHT: "LEFT"
+    };
+
     const possibleDirections = [];
 
     for (let direction of directions) {
 
-        const nextPosition =
-            getGhostNextPosition(ghost, direction);
+        // Don't go backwards unless necessary
+        if (
+            direction ===
+            oppositeDirections[ghost.direction]
+        ) {
+            continue;
+        }
+
+        let testX = ghost.x;
+        let testY = ghost.y;
+
+        switch (direction) {
+
+            case "UP":
+                testY -= TILE_SIZE / 2;
+                break;
+
+            case "DOWN":
+                testY += TILE_SIZE / 2;
+                break;
+
+            case "LEFT":
+                testX -= TILE_SIZE / 2;
+                break;
+
+            case "RIGHT":
+                testX += TILE_SIZE / 2;
+                break;
+        }
 
         if (
             canGhostMoveTo(
                 ghost,
-                nextPosition.x,
-                nextPosition.y
+                testX,
+                testY
             )
         ) {
             possibleDirections.push(direction);
         }
     }
 
-    if (possibleDirections.length > 0) {
-
-        const randomIndex = Math.floor(
-            Math.random() * possibleDirections.length
-        );
+    // If there is no other option,
+    // turn around
+    if (possibleDirections.length === 0) {
 
         ghost.direction =
-            possibleDirections[randomIndex];
+            oppositeDirections[ghost.direction];
+
+        return;
     }
+
+    let bestDirection = possibleDirections[0];
+let shortestDistance = Infinity;
+
+for (let direction of possibleDirections) {
+
+    let targetX = ghost.x;
+    let targetY = ghost.y;
+
+    switch (direction) {
+
+        case "UP":
+            targetY -= TILE_SIZE;
+            break;
+
+        case "DOWN":
+            targetY += TILE_SIZE;
+            break;
+
+        case "LEFT":
+            targetX -= TILE_SIZE;
+            break;
+
+        case "RIGHT":
+            targetX += TILE_SIZE;
+            break;
+    }
+
+    const distance = Math.sqrt(
+        Math.pow(pacman.x - targetX, 2) +
+        Math.pow(pacman.y - targetY, 2)
+    );
+
+    if (distance < shortestDistance) {
+
+        shortestDistance = distance;
+        bestDirection = direction;
+    }
+}
+
+ghost.direction = bestDirection;
 }
 
 function updateGhost(ghost) {
 
-    let nextPosition =
+    const col = Math.floor(ghost.x / TILE_SIZE);
+    const row = Math.floor(ghost.y / TILE_SIZE);
+
+    const centerX =
+        col * TILE_SIZE + TILE_SIZE / 2;
+
+    const centerY =
+        row * TILE_SIZE + TILE_SIZE / 2;
+
+    const nearCenter =
+        Math.abs(ghost.x - centerX) <= ghost.speed &&
+        Math.abs(ghost.y - centerY) <= ghost.speed;
+
+    const newTile =
+        row !== ghost.lastDecisionRow ||
+        col !== ghost.lastDecisionCol;
+
+
+    // Choose direction only once per tile
+    if (nearCenter && newTile) {
+
+        ghost.x = centerX;
+        ghost.y = centerY;
+
+        chooseGhostDirection(ghost);
+
+        ghost.lastDecisionRow = row;
+        ghost.lastDecisionCol = col;
+    }
+
+
+    const nextPosition =
         getGhostNextPosition(
             ghost,
             ghost.direction
         );
+
 
     if (
         canGhostMoveTo(
@@ -268,7 +430,6 @@ function updateGhost(ghost) {
     }
 
     else {
-
         chooseGhostDirection(ghost);
     }
 }
@@ -373,6 +534,8 @@ let score = 0;
 let highScore = localStorage.getItem("pacmanHighScore");
 let powerMode = false;
 let powerTimer = null;
+let lives = 3;
+let gameOver = false;
 
 if (highScore === null) {
     highScore = 0;
@@ -547,11 +710,36 @@ function drawGhost(ghost) {
     ctx.fill();
 }
 
+function resetPacman() {
+
+    pacman.x = 350;
+    pacman.y = 612.5;
+
+    pacman.direction = "LEFT";
+    pacman.nextDirection = "LEFT";
+
+    blinky.x = blinky.startX;
+    blinky.y = blinky.startY;
+    blinky.direction = "LEFT";
+
+    blinky.lastDecisionRow = -1;
+    blinky.lastDecisionCol = -1;
+}
+
 // -------------------------
 // GAME LOOP
 // -------------------------
 
 function gameLoop() {
+
+    if (gameOver) {
+
+    drawMaze();
+    drawPacman();
+    drawGhost(blinky);
+
+    return;
+    }
 
     ctx.clearRect(
         0,
@@ -562,6 +750,7 @@ function gameLoop() {
 
     updatePacman();
     updateGhost(blinky);
+    handleGhostCollision(blinky);
 
     drawMaze();
     drawPacman();

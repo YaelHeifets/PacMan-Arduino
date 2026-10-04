@@ -43,13 +43,15 @@ const maze = [
     "####################"
 ];
 
+const mazeGrid = maze.map(row => row.split(""));
+
 function drawMaze() {
 
     for (let row = 0; row < maze.length; row++) {
 
         for (let col = 0; col < maze[row].length; col++) {
 
-            const tile = maze[row][col];
+            const tile = mazeGrid[row][col];
 
             const x = col * TILE_SIZE;
             const y = row * TILE_SIZE;
@@ -141,8 +143,7 @@ function isWall(x, y) {
         return true;
     }
 
-    return maze[row][col] === "#";
-}
+    return maze[row][col] === "#";}
 
 function canPacmanMoveTo(x, y) {
 
@@ -161,20 +162,23 @@ function getNextPosition(direction) {
     let x = pacman.x;
     let y = pacman.y;
 
-    if (direction === "UP") {
-        y -= pacman.speed;
-    }
+    switch (direction) {
 
-    else if (direction === "DOWN") {
-        y += pacman.speed;
-    }
+        case "UP":
+            y -= pacman.speed;
+            break;
 
-    else if (direction === "LEFT") {
-        x -= pacman.speed;
-    }
+        case "DOWN":
+            y += pacman.speed;
+            break;
 
-    else if (direction === "RIGHT") {
-        x += pacman.speed;
+        case "LEFT":
+            x -= pacman.speed;
+            break;
+
+        case "RIGHT":
+            x += pacman.speed;
+            break;
     }
 
     return { x, y };
@@ -207,14 +211,16 @@ function updatePacman() {
     );
 
     if (
-        canPacmanMoveTo(
-            nextMove.x,
-            nextMove.y
+    canPacmanMoveTo(
+        nextMove.x,
+        nextMove.y
         )
     ) {
         pacman.x = nextMove.x;
         pacman.y = nextMove.y;
     }
+
+    eatDot();
 }
 
 
@@ -242,6 +248,49 @@ function drawPacman() {
     ctx.fill();
 }
 
+let score = 0;
+
+let highScore = localStorage.getItem("pacmanHighScore");
+
+if (highScore === null) {
+    highScore = 0;
+} else {
+    highScore = Number(highScore);
+}
+
+document.getElementById("highScore").textContent = highScore;
+
+function addScore(points) {
+
+    score += points;
+
+    document.getElementById("score").textContent = score;
+
+    if (score > highScore) {
+
+        highScore = score;
+
+        document.getElementById("highScore").textContent = highScore;
+
+        localStorage.setItem(
+            "pacmanHighScore",
+            highScore
+        );
+    }
+}
+
+function eatDot() {
+
+    const col = Math.floor(pacman.x / TILE_SIZE);
+    const row = Math.floor(pacman.y / TILE_SIZE);
+
+    if (mazeGrid[row][col] === ".") {
+
+        mazeGrid[row][col] = " ";
+
+        addScore(10);
+    }
+}
 
 // -------------------------
 // GAME LOOP

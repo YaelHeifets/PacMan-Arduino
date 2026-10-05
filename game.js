@@ -769,7 +769,45 @@ document
         "click",
         restartGame
     );
+async function readSerialData() {
+    const reader = serialPort.readable.getReader();
+    const decoder = new TextDecoder();
 
+    let buffer = "";
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+
+            if (done) {
+                break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop();
+
+            lines.forEach(direction => {
+                direction = direction.trim();
+
+                if (
+                    direction === "UP" ||
+                    direction === "DOWN" ||
+                    direction === "LEFT" ||
+                    direction === "RIGHT"
+                ) {
+                    console.log("Arduino:", direction);
+                    handleDirection(direction);
+                }
+            });
+        }
+    } catch (error) {
+        console.log("Serial connection error:", error);
+    } finally {
+        reader.releaseLock();
+    }
+}
 async function connectController() {
 
     try {
@@ -786,10 +824,9 @@ async function connectController() {
         document.getElementById("status").textContent =
             "Arduino controller connected";
 
-        // readSerialData();
-    }
+        readSerialData();
 
-    catch (error) {
+    } catch (error) {
 
         console.log(
             "Serial connection error:",
@@ -797,6 +834,7 @@ async function connectController() {
         );
     }
 }
+
 
 document
     .getElementById("connectButton")

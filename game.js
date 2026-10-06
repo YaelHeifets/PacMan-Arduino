@@ -541,6 +541,7 @@ let lives = 3;
 let gameOver = false;
 let serialPort;
 let serialReader;
+let isPaused = false;
 
 if (highScore === null) {
     highScore = 0;
@@ -738,6 +739,7 @@ function restartGame() {
     gameOver = false;
     powerMode = false;
 
+
     // Stop an old Power Mode timer
     if (powerTimer !== null) {
         clearTimeout(powerTimer);
@@ -803,7 +805,13 @@ async function readSerialData() {
                 else if (direction === "START") {
                     console.log("Arduino: START");
                     restartGame();
-                }
+                    }
+                else if (direction === "PAUSE") {
+                        console.log("Arduino: PAUSE");
+                    isPaused = !isPaused;
+                    console.log("isPaused:", isPaused);
+                    }
+
             });
 
         }
@@ -855,11 +863,16 @@ function gameLoop() {
 
     if (gameOver) {
 
-    drawMaze();
-    drawPacman();
-    drawGhost(blinky);
+        drawMaze();
+        drawPacman();
+        drawGhost(blinky);
 
-    return;
+        return;
+    }
+
+    if (isPaused) {
+        requestAnimationFrame(gameLoop);
+        return;
     }
 
     ctx.clearRect(
@@ -868,7 +881,6 @@ function gameLoop() {
         canvas.width,
         canvas.height
     );
-
     updatePacman();
     updateGhost(blinky);
     handleGhostCollision(blinky);

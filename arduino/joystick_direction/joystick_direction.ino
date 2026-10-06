@@ -1,18 +1,22 @@
 const int JOYSTICK_X = 2;
 const int JOYSTICK_Y = 1;
 const int BLUE_BUTTON = 4;
+const int RED_BUTTON = 5;
 
 bool lastButtonState = HIGH;
+bool lastRedButtonState = HIGH;
 
 void setup() {
   Serial.begin(9600);
   pinMode(BLUE_BUTTON, INPUT_PULLUP);
+  pinMode(RED_BUTTON, INPUT_PULLUP);
 }
 
 void loop() {
   int xValue = analogRead(JOYSTICK_X);
   int yValue = analogRead(JOYSTICK_Y);
-  bool currentButtonState = digitalRead(BLUE_BUTTON);
+ bool currentButtonState = digitalRead(BLUE_BUTTON);
+ bool currentRedButtonState = digitalRead(RED_BUTTON);
 
   String direction = "CENTER";
 
@@ -33,10 +37,16 @@ void loop() {
 
   delay(200);
   if (lastButtonState == HIGH && currentButtonState == LOW) {
-    Serial.println("START");
-  }
+  Serial.println("START");
+}
 
-  lastButtonState = currentButtonState;
+lastButtonState = currentButtonState;
+
+if (lastRedButtonState == HIGH && currentRedButtonState == LOW) {
+  Serial.println("PAUSE");
+}
+
+lastRedButtonState = currentRedButtonState;
 
   delay(20);
 }

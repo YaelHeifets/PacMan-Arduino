@@ -800,7 +800,12 @@ async function readSerialData() {
                     console.log("Arduino:", direction);
                     handleDirection(direction);
                 }
+                else if (direction === "START") {
+                    console.log("Arduino: START");
+                    restartGame();
+                }
             });
+
         }
     } catch (error) {
         console.log("Serial connection error:", error);

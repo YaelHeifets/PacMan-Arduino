@@ -562,11 +562,19 @@ let serialReader;
 let isPaused = false;
 let dotsEaten = 0;
 let cherryActive = false;
+let capsuleActive = false;
 
 const cherry = {
     x: 332.5,
     y: 437.5,
     radius: 8
+};
+
+const capsule = {
+    x: 507.5,
+    y: 227.5,
+    width: 24,
+    height: 12
 };
 
 if (highScore === null) {
@@ -614,6 +622,10 @@ function eatDot() {
 
     if (dotsEaten === 30) {
         cherryActive = true;
+        }
+
+        if (dotsEaten === 60) {
+    capsuleActive = true;
         }
     }
 
@@ -802,6 +814,42 @@ function drawCherry() {
     ctx.stroke();
 }
 
+function drawCapsule() {
+
+    if (!capsuleActive) {
+        return;
+    }
+
+    const x = capsule.x;
+    const y = capsule.y;
+    const w = capsule.width;
+    const h = capsule.height;
+
+    // Left half - red
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.roundRect(
+        x - w / 2,
+        y - h / 2,
+        w / 2,
+        h,
+        [h / 2, 0, 0, h / 2]
+    );
+    ctx.fill();
+
+    // Right half - white
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.roundRect(
+        x,
+        y - h / 2,
+        w / 2,
+        h,
+        [0, h / 2, h / 2, 0]
+    );
+    ctx.fill();
+}
+
 function checkCherryCollision() {
 
     if (!cherryActive) {
@@ -822,6 +870,29 @@ function checkCherryCollision() {
         cherryActive = false;
 
         addScore(500);
+    }
+}
+
+function checkCapsuleCollision() {
+
+    if (!capsuleActive) {
+        return;
+    }
+
+    const dx = pacman.x - capsule.x;
+    const dy = pacman.y - capsule.y;
+
+    const distance = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    if (distance < pacman.radius + capsule.width / 2) {
+
+        capsuleActive = false;
+
+        lives++;
+
+        document.getElementById("lives").textContent = lives;
     }
 }
 
@@ -849,6 +920,7 @@ function restartGame() {
     powerMode = false;
     dotsEaten = 0;
     cherryActive = false;
+    capsuleActive = false;
 
 
     // Stop an old Power Mode timer
@@ -994,12 +1066,14 @@ function gameLoop() {
     );
     updatePacman();
     checkCherryCollision();
+    checkCapsuleCollision();
     updateGhost(blinky);
     handleGhostCollision(blinky);
 
     drawMaze();
     drawPacman();
     drawCherry();
+    drawCapsule();
     drawGhost(blinky);
 
     requestAnimationFrame(gameLoop);

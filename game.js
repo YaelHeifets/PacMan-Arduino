@@ -145,20 +145,8 @@ document.addEventListener("keydown", function(event) {
 });
 
 function isWall(x, y) {
-
-    function isWall(x, y) {
     const col = Math.floor(x / TILE_SIZE);
     const row = Math.floor(y / TILE_SIZE);
-
-    const tunnelRow = 10;
-
-    // Allow Pac-Man to leave the screen through the tunnel
-    if (
-        row === tunnelRow &&
-        (col < 0 || col >= mazeGrid[0].length)
-    ) {
-        return false;
-    }
 
     if (
         row < 0 ||
@@ -170,7 +158,6 @@ function isWall(x, y) {
     }
 
     return mazeGrid[row][col] === "#";
-    }
 }
 
 function canPacmanMoveTo(x, y) {
@@ -514,11 +501,19 @@ function updatePacman() {
     const currentRow = Math.floor(pacman.y / TILE_SIZE);
 
     if (currentRow === tunnelRow) {
-        if (pacman.x < -pacman.radius) {
-            pacman.x = canvas.width + pacman.radius;
+
+        if (
+            pacman.direction === "LEFT" &&
+            pacman.x <= TILE_SIZE / 2
+        ) {
+            pacman.x = canvas.width - TILE_SIZE / 2;
         }
-        else if (pacman.x > canvas.width + pacman.radius) {
-            pacman.x = -pacman.radius;
+
+        else if (
+            pacman.direction === "RIGHT" &&
+            pacman.x >= canvas.width - TILE_SIZE / 2
+        ) {
+            pacman.x = TILE_SIZE / 2;
         }
     }
 

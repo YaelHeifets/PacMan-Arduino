@@ -48,7 +48,7 @@ const maze = [
     "######.##..##.######",
     "######........######",
     "######.##--##.######",
-    "#........--........#",
+    " ........--........ ",
     "######.######.######",
     "######........######",
     "#........##........#",
@@ -146,20 +146,31 @@ document.addEventListener("keydown", function(event) {
 
 function isWall(x, y) {
 
+    function isWall(x, y) {
     const col = Math.floor(x / TILE_SIZE);
     const row = Math.floor(y / TILE_SIZE);
 
-    // Outside the maze = wall
+    const tunnelRow = 10;
+
+    // Allow Pac-Man to leave the screen through the tunnel
+    if (
+        row === tunnelRow &&
+        (col < 0 || col >= mazeGrid[0].length)
+    ) {
+        return false;
+    }
+
     if (
         row < 0 ||
-        row >= maze.length ||
+        row >= mazeGrid.length ||
         col < 0 ||
-        col >= maze[0].length
+        col >= mazeGrid[0].length
     ) {
         return true;
     }
 
     return mazeGrid[row][col] === "#";
+    }
 }
 
 function canPacmanMoveTo(x, y) {
@@ -499,6 +510,18 @@ function updatePacman() {
         pacman.y = nextMove.y;
     }
 
+    const tunnelRow = 10;
+    const currentRow = Math.floor(pacman.y / TILE_SIZE);
+
+    if (currentRow === tunnelRow) {
+        if (pacman.x < -pacman.radius) {
+            pacman.x = canvas.width + pacman.radius;
+        }
+        else if (pacman.x > canvas.width + pacman.radius) {
+            pacman.x = -pacman.radius;
+        }
+    }
+
     eatDot();
 }
 
@@ -542,6 +565,14 @@ let gameOver = false;
 let serialPort;
 let serialReader;
 let isPaused = false;
+let dotsEaten = 0;
+let cherryActive = false;
+
+const cherry = {
+    x: 332.5,
+    y: 437.5,
+    radius: 8
+};
 
 if (highScore === null) {
     highScore = 0;
@@ -580,9 +611,15 @@ function eatDot() {
 
     if (tile === ".") {
 
-        mazeGrid[row][col] = " ";
+    mazeGrid[row][col] = " ";
 
-        addScore(10);
+    addScore(10);
+
+    dotsEaten++;
+
+    if (dotsEaten === 30) {
+        cherryActive = true;
+        }
     }
 
     else if (tile === "o") {
@@ -716,6 +753,83 @@ function drawGhost(ghost) {
     ctx.fill();
 }
 
+function drawCherry() {
+
+    if (!cherryActive) {
+        return;
+    }
+
+    // Cherries
+    ctx.fillStyle = "red";
+
+    ctx.beginPath();
+    ctx.arc(
+        cherry.x - 7,
+        cherry.y + 5,
+        cherry.radius,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(
+        cherry.x + 10,
+        cherry.y + 5,
+        cherry.radius,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+
+
+    // Stems
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        cherry.x - 7,
+        cherry.y - 5
+    );
+
+    ctx.lineTo(
+        cherry.x,
+        cherry.y - 22
+    );
+
+    ctx.lineTo(
+        cherry.x + 10,
+        cherry.y - 5
+    );
+
+    ctx.stroke();
+}
+
+function checkCherryCollision() {
+
+    if (!cherryActive) {
+        return;
+    }
+
+    const dx = pacman.x - cherry.x;
+    const dy = pacman.y - cherry.y;
+
+    const distance = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    if (
+        distance <
+        pacman.radius + cherry.radius
+    ) {
+        cherryActive = false;
+
+        addScore(500);
+    }
+}
+
 function resetPacman() {
 
     pacman.x = 350;
@@ -738,6 +852,8 @@ function restartGame() {
     lives = 3;
     gameOver = false;
     powerMode = false;
+    dotsEaten = 0;
+    cherryActive = false;
 
 
     // Stop an old Power Mode timer
@@ -882,11 +998,13 @@ function gameLoop() {
         canvas.height
     );
     updatePacman();
+    checkCherryCollision();
     updateGhost(blinky);
     handleGhostCollision(blinky);
 
     drawMaze();
     drawPacman();
+    drawCherry();
     drawGhost(blinky);
 
     requestAnimationFrame(gameLoop);

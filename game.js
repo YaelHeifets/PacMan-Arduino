@@ -566,10 +566,11 @@ let score = 0;
 let highScore = localStorage.getItem("pacmanHighScore");
 let powerMode = false;
 let powerTimer = null;
+let powerTimeLeft = 8000;
+let powerStartTime = null;
 let lives = 3;
 let gameOver = false;
 let serialPort;
-let serialReader;
 let isPaused = false;
 let dotsEaten = 0;
 let cherryActive = false;
@@ -578,6 +579,7 @@ let audioContext = null;
 let wakaToggle = false; 
 let gameStarted = false;
 let levelComplete = false;
+let nextLevelTimer = null;
 let level = 1;
 
 function enableGameAudio() {
@@ -639,7 +641,6 @@ function eatDot() {
     const row = Math.floor(pacman.y / TILE_SIZE);
 
     const tile = mazeGrid[row][col];
-    console.log("row:", row, "col:", col, "tile:", tile);
 
     if (tile === ".") {
 
@@ -668,9 +669,8 @@ function eatDot() {
         activatePowerMode();
     }
 
-    if (!levelComplete && areAllDotsEaten()) {
-    levelComplete = true;
-    console.log("LEVEL COMPLETE!");
+    if (areAllDotsEaten()) {
+    completeLevel();
     }
 }
 
@@ -692,22 +692,18 @@ function areAllDotsEaten() {
 }
 
 function activatePowerMode() {
-
     powerMode = true;
-    playPowerSound();
+    powerTimeLeft = 8000;
 
-    document.getElementById("status").textContent =
-        "POWER MODE!";
+    document.getElementById("status").textContent = "POWER MODE!";
 
-    // If Pac-Man eats another Power Pellet
-    // while Power Mode is already active,
-    // restart the timer.
     if (powerTimer !== null) {
         clearTimeout(powerTimer);
     }
 
-    powerTimer = setTimeout(function() {
+    powerStartTime = Date.now();
 
+    powerTimer = setTimeout(function() {
         powerMode = false;
         stopPowerSound();
 
@@ -715,8 +711,11 @@ function activatePowerMode() {
             "Use arrow keys to move";
 
         powerTimer = null;
+        powerStartTime = null;
+        powerTimeLeft = 0;
+    }, powerTimeLeft);
 
-    }, 8000);
+    playPowerSound();
 }
 
 function drawGhost(ghost) {
@@ -968,10 +967,69 @@ function resetPacman() {
     blinky.lastDecisionCol = -1;
 }
 
+function completeLevel() {
+    if (levelComplete || gameOver || !gameStarted) {
+        return;
+    }
+
+    levelComplete = true;
+    stopBackgroundMusic();
+    stopPowerSound();
+
+    console.log("LEVEL COMPLETE!");
+
+    nextLevelTimer = setTimeout(function() {
+        nextLevelTimer = null;
+
+        if (levelComplete && !gameOver && gameStarted) {
+            startNextLevel();
+            startBackgroundMusic();
+        }
+    }, 2000);
+}
+
+function startNextLevel() {
+    level++;
+
+    levelComplete = false;
+    powerMode = false;
+    dotsEaten = 0;
+    cherryActive = false;
+    capsuleActive = false;
+
+    stopPowerSound();
+
+    if (powerTimer !== null) {
+        clearTimeout(powerTimer);
+        powerTimer = null;
+    }
+
+    // Restore all dots and Power Pellets
+    for (let row = 0; row < maze.length; row++) {
+        mazeGrid[row] = maze[row].split("");
+    }
+
+    // Increase Blinky's speed
+    blinky.speed = Math.min(1.5 + (level - 1) * 0.2, 3);
+
+    // Reset Pac-Man and Blinky positions
+    resetPacman();
+
+    // Update level display
+    document.getElementById("level").textContent = level;
+    document.getElementById("status").textContent =
+        "LEVEL " + level + " - Use arrow keys to move";
+}
+
 function restartGame() {
     gameStarted = true;
     levelComplete = false;
     level = 1;
+        if (nextLevelTimer !== null) {
+            clearTimeout(nextLevelTimer);
+            nextLevelTimer = null;
+        }
+    blinky.speed = 1.5;
     
     playStartSound();
     isPaused = false;
@@ -1026,7 +1084,7 @@ document.getElementById("musicButton").addEventListener("click", function() {
     if (musicEnabled) {
         this.textContent = "MUSIC: ON";
 
-        if (gameStarted && !gameOver && !isPaused) {
+        if (gameStarted && !gameOver && !isPaused && !levelComplete) {
             startBackgroundMusic();
         }
     } else {
@@ -1071,7 +1129,9 @@ async function readSerialData() {
                     restartGame();
                     }
                 else if (direction === "PAUSE") {
-                console.log("Arduino: PAUSE");
+                if (!gameStarted || gameOver || levelComplete) {
+                    return;
+                }
 
                 isPaused = !isPaused;
 
@@ -1083,7 +1143,6 @@ async function readSerialData() {
 
                 console.log("isPaused:", isPaused);
             }
-
             });
 
         }
@@ -1175,12 +1234,58 @@ document.getElementById("startButton").addEventListener("click", function() {
 
 // TEMPORARY QA SHORTCUT - REMOVE BEFORE SUBMISSION
 document.addEventListener("keydown", function(event) {
-    if (event.key === "t" && gameStarted && !gameOver) {
+    const key = event.key.toLowerCase();
+
+    if (key === "t") {
+        event.preventDefault();
+        completeLevel();
+    }
+
+    else if (key === "p") {
         event.preventDefault();
 
-        levelComplete = true;
+        if (!gameStarted || gameOver || levelComplete) {
+            return;
+        }
 
-        console.log("QA: LEVEL COMPLETE!");
+        isPaused = !isPaused;
+
+        if (isPaused) {
+    stopBackgroundMusic();
+
+    if (powerMode && powerTimer !== null) {
+        clearTimeout(powerTimer);
+        powerTimer = null;
+
+        powerTimeLeft -= Date.now() - powerStartTime;
+        powerTimeLeft = Math.max(0, powerTimeLeft);
+
+        stopPowerSound();
+    }
+
+} else {
+    startBackgroundMusic();
+
+    if (powerMode && powerTimeLeft > 0) {
+        powerStartTime = Date.now();
+
+        powerTimer = setTimeout(function() {
+            powerMode = false;
+            stopPowerSound();
+
+            document.getElementById("status").textContent =
+                "Use arrow keys to move";
+
+            powerTimer = null;
+            powerStartTime = null;
+            powerTimeLeft = 0;
+        }, powerTimeLeft);
+
+        playPowerSound();
+    }
+}
+
+        console.log("isPaused:", isPaused);
     }
 });
 

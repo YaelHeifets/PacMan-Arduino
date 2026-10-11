@@ -219,7 +219,7 @@ function handleGhostCollision(ghost) {
     else {
 
         lives--;
-
+        updateLivesLeds();
         playDeathSound();
 
         document.getElementById("lives").textContent =
@@ -228,6 +228,7 @@ function handleGhostCollision(ghost) {
         if (lives <= 0) {
 
             gameOver = true;
+            sendLedCommand("GAME_OVER");
             stopBackgroundMusic();
             stopPowerSound();
 
@@ -538,14 +539,27 @@ function updatePacman() {
 
 function drawPacman() {
 
+    let angle = 0;
+
+    switch (pacman.direction) {
+        case "DOWN":
+            angle = Math.PI / 2;
+            break;
+        case "LEFT":
+            angle = Math.PI;
+            break;
+        case "UP":
+            angle = -Math.PI / 2;
+            break;
+    }
     ctx.beginPath();
 
     ctx.arc(
         pacman.x,
         pacman.y,
         pacman.radius,
-        0.2 * Math.PI,
-        1.8 * Math.PI
+        0.2 * Math.PI + angle,
+        1.8 * Math.PI + angle
     );
 
     ctx.lineTo(pacman.x, pacman.y);
@@ -694,7 +708,7 @@ function areAllDotsEaten() {
 function activatePowerMode() {
     powerMode = true;
     powerTimeLeft = 8000;
-
+    sendLedCommand("POWER:" + powerTimeLeft);
     document.getElementById("status").textContent = "POWER MODE!";
 
     if (powerTimer !== null) {
@@ -705,6 +719,7 @@ function activatePowerMode() {
 
     powerTimer = setTimeout(function() {
         powerMode = false;
+        updateLivesLeds();
         stopPowerSound();
 
         document.getElementById("status").textContent =
@@ -945,6 +960,7 @@ function checkCapsuleCollision() {
         capsuleActive = false;
 
         lives++;
+        updateLivesLeds();
         playExtraLifeSound();
 
         document.getElementById("lives").textContent = lives;
@@ -973,8 +989,10 @@ function completeLevel() {
     }
 
     levelComplete = true;
+    sendLedCommand("LEVEL_COMPLETE");
     stopBackgroundMusic();
     stopPowerSound();
+    playVictorySound();
 
     console.log("LEVEL COMPLETE!");
 
@@ -989,10 +1007,11 @@ function completeLevel() {
 }
 
 function startNextLevel() {
+    
     level++;
-
     levelComplete = false;
     powerMode = false;
+    updateLivesLeds();
     dotsEaten = 0;
     cherryActive = false;
     capsuleActive = false;
@@ -1040,6 +1059,7 @@ function restartGame() {
 
     score = 0;
     lives = 3;
+    updateLivesLeds();
     gameOver = false;
     powerMode = false;
     dotsEaten = 0;
@@ -1093,6 +1113,27 @@ document.getElementById("musicButton").addEventListener("click", function() {
     }
 });
 
+async function sendLedCommand(command) {
+    if (!serialPort || !serialPort.writable) {
+        console.log("LED (not connected):", command);
+        return;
+    }
+
+    const writer = serialPort.writable.getWriter();
+
+    try {
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(command + "\n"));
+    } catch (error) {
+        console.error("LED command error:", error);
+    } finally {
+        writer.releaseLock();
+    }
+}
+
+function updateLivesLeds() {
+    sendLedCommand("LIVES:" + lives);
+}
 
 async function readSerialData() {
     const reader = serialPort.readable.getReader();
@@ -1215,6 +1256,16 @@ function gameLoop() {
     ctx.fillText("LEVEL COMPLETE!", canvas.width / 2, 360);
     }
 
+    if (isPaused && !gameOver) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+    ctx.fillRect(0, 280, canvas.width, 140);
+
+    ctx.fillStyle = "yellow";
+    ctx.font = "bold 48px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("PAUSED", canvas.width / 2, 360);
+    }
+
     requestAnimationFrame(gameLoop);
 }
 document.getElementById("startButton").addEventListener("click", function() {
@@ -1250,6 +1301,7 @@ function togglePause() {
 
             powerTimer = setTimeout(function() {
                 powerMode = false;
+                updateLivesLeds();
                 stopPowerSound();
 
                 document.getElementById("status").textContent =
@@ -1263,7 +1315,7 @@ function togglePause() {
             playPowerSound();
         }
     }
-
+    sendLedCommand(isPaused ? "PAUSE" : "RESUME");
     console.log("isPaused:", isPaused);
 }
 
@@ -1418,6 +1470,54 @@ function playExtraLifeSound() {
 
         oscillator.start(startTime);
         oscillator.stop(startTime + 0.15);
+    }
+}
+
+
+
+function playVictorySound() {
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    // Original retro arcade victory fanfare
+    const notes = [
+        [392, 0.00, 0.10],
+        [523, 0.12, 0.10],
+        [659, 0.24, 0.10],
+        [784, 0.36, 0.18],
+
+        [659, 0.58, 0.10],
+        [784, 0.70, 0.10],
+        [988, 0.82, 0.12],
+        [1047, 0.96, 0.22],
+
+        [784, 1.22, 0.10],
+        [988, 1.34, 0.10],
+        [1047, 1.46, 0.12],
+        [1319, 1.62, 0.36]
+    ];
+
+    for (const [frequency, offset, duration] of notes) {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        const startTime = now + offset;
+
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+
+        gain.gain.setValueAtTime(0.035, startTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            startTime + duration
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
     }
 }
 

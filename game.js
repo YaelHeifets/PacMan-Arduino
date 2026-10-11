@@ -563,6 +563,8 @@ let isPaused = false;
 let dotsEaten = 0;
 let cherryActive = false;
 let capsuleActive = false;
+let audioContext = null;
+let wakaToggle = false;
 
 const cherry = {
     x: 332.5,
@@ -617,6 +619,7 @@ function eatDot() {
     mazeGrid[row][col] = " ";
 
     addScore(10);
+    playWakaSound();
 
     dotsEaten++;
 
@@ -1081,3 +1084,36 @@ function gameLoop() {
 
 
 gameLoop();
+
+// ===== GAME SOUNDS =====
+
+function playWakaSound() {
+    if (!audioContext) {
+        audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = "square";
+
+    // Alternate between two tones
+    oscillator.frequency.value = wakaToggle ? 420 : 520;
+    wakaToggle = !wakaToggle;
+
+    gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + 0.07
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.07);
+}

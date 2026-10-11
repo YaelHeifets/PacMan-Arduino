@@ -1093,6 +1093,7 @@ document.getElementById("musicButton").addEventListener("click", function() {
     }
 });
 
+
 async function readSerialData() {
     const reader = serialPort.readable.getReader();
     const decoder = new TextDecoder();
@@ -1127,24 +1128,12 @@ async function readSerialData() {
                 else if (direction === "START") {
                     console.log("Arduino: START");
                     restartGame();
-                    }
+                }
                 else if (direction === "PAUSE") {
-                if (!gameStarted || gameOver || levelComplete) {
-                    return;
+                    console.log("Arduino: PAUSE");
+                    togglePause();
                 }
-
-                isPaused = !isPaused;
-
-                if (isPaused) {
-                    stopBackgroundMusic();
-                } else {
-                    startBackgroundMusic();
-                }
-
-                console.log("isPaused:", isPaused);
-            }
             });
-
         }
     } catch (error) {
         console.log("Serial connection error:", error);
@@ -1152,6 +1141,7 @@ async function readSerialData() {
         reader.releaseLock();
     }
 }
+
 async function connectController() {
 
     try {
@@ -1232,6 +1222,51 @@ document.getElementById("startButton").addEventListener("click", function() {
     restartGame();
 });
 
+function togglePause() {
+    if (!gameStarted || gameOver || levelComplete) {
+        return;
+    }
+
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        stopBackgroundMusic();
+
+        if (powerMode && powerTimer !== null) {
+            clearTimeout(powerTimer);
+            powerTimer = null;
+
+            powerTimeLeft -= Date.now() - powerStartTime;
+            powerTimeLeft = Math.max(0, powerTimeLeft);
+
+            stopPowerSound();
+        }
+
+    } else {
+        startBackgroundMusic();
+
+        if (powerMode && powerTimeLeft > 0) {
+            powerStartTime = Date.now();
+
+            powerTimer = setTimeout(function() {
+                powerMode = false;
+                stopPowerSound();
+
+                document.getElementById("status").textContent =
+                    "Use arrow keys to move";
+
+                powerTimer = null;
+                powerStartTime = null;
+                powerTimeLeft = 0;
+            }, powerTimeLeft);
+
+            playPowerSound();
+        }
+    }
+
+    console.log("isPaused:", isPaused);
+}
+
 // TEMPORARY QA SHORTCUT - REMOVE BEFORE SUBMISSION
 document.addEventListener("keydown", function(event) {
     const key = event.key.toLowerCase();
@@ -1243,49 +1278,7 @@ document.addEventListener("keydown", function(event) {
 
     else if (key === "p") {
         event.preventDefault();
-
-        if (!gameStarted || gameOver || levelComplete) {
-            return;
-        }
-
-        isPaused = !isPaused;
-
-        if (isPaused) {
-    stopBackgroundMusic();
-
-    if (powerMode && powerTimer !== null) {
-        clearTimeout(powerTimer);
-        powerTimer = null;
-
-        powerTimeLeft -= Date.now() - powerStartTime;
-        powerTimeLeft = Math.max(0, powerTimeLeft);
-
-        stopPowerSound();
-    }
-
-} else {
-    startBackgroundMusic();
-
-    if (powerMode && powerTimeLeft > 0) {
-        powerStartTime = Date.now();
-
-        powerTimer = setTimeout(function() {
-            powerMode = false;
-            stopPowerSound();
-
-            document.getElementById("status").textContent =
-                "Use arrow keys to move";
-
-            powerTimer = null;
-            powerStartTime = null;
-            powerTimeLeft = 0;
-        }, powerTimeLeft);
-
-        playPowerSound();
-    }
-}
-
-        console.log("isPaused:", isPaused);
+        togglePause();
     }
 });
 

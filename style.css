@@ -17,7 +17,7 @@ body {
 }
 
 .game-container {
-    width: 700px;
+    width: min(700px, 95vw, 75vh);
     text-align: center;
 }
 
@@ -30,12 +30,12 @@ h1 {
 }
 
 .score-board {
-    width: 700px;
+    width: 100%;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: center;
     margin-bottom: 10px;
-    font-size: 18px;
+    font-size: clamp(12px, 2.5vw, 18px);
 }
 
 .score-board div {
@@ -54,14 +54,15 @@ h1 {
 
 canvas {
     display: block;
-    width: 700px;
-    height: 700px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
     background-color: #000;
     border: 3px solid #2121ff;
 }
 
 .game-info {
-    width: 700px;
+    width: 100%;
     margin-top: 12px;
     text-align: center;
     color: #aaa;
@@ -115,13 +116,22 @@ canvas {
     cursor: pointer;
 }
 
+#startButton,
+#musicButton,
 #connectButton {
-    margin: 15px auto 0;
+    margin: 15px 5px 0;
     padding: 10px 20px;
     background-color: #2121ff;
     color: white;
     border: none;
+    border-radius: 5px;
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
+}
+
+#startButton:hover,
+#musicButton:hover,
+#connectButton:hover {
+    background-color: #4040ff;
 }

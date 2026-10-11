@@ -577,6 +577,8 @@ let capsuleActive = false;
 let audioContext = null;
 let wakaToggle = false; 
 let gameStarted = false;
+let levelComplete = false;
+let level = 1;
 
 function enableGameAudio() {
     if (!audioContext) {
@@ -665,6 +667,28 @@ function eatDot() {
 
         activatePowerMode();
     }
+
+    if (!levelComplete && areAllDotsEaten()) {
+    levelComplete = true;
+    console.log("LEVEL COMPLETE!");
+    }
+}
+
+function areAllDotsEaten() {
+
+    for (let row = 0; row < mazeGrid.length; row++) {
+        for (let col = 0; col < mazeGrid[row].length; col++) {
+
+            if (
+                mazeGrid[row][col] === "." ||
+                mazeGrid[row][col] === "o"
+            ) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 function activatePowerMode() {
@@ -946,7 +970,9 @@ function resetPacman() {
 
 function restartGame() {
     gameStarted = true;
-
+    levelComplete = false;
+    level = 1;
+    
     playStartSound();
     isPaused = false;
     stopPowerSound();
@@ -976,6 +1002,7 @@ function restartGame() {
 
     document.getElementById("score").textContent = score;
     document.getElementById("lives").textContent = lives;
+    document.getElementById("level").textContent = level;
 
     document.getElementById("status").textContent =
         "Use arrow keys to move";
@@ -1114,7 +1141,7 @@ function gameLoop() {
     );
 
     // Update only after START
-    if (gameStarted && !gameOver && !isPaused) {
+    if (gameStarted && !gameOver && !isPaused && !levelComplete) {
         updatePacman();
         checkCherryCollision();
         checkCapsuleCollision();
@@ -1129,11 +1156,32 @@ function gameLoop() {
     drawCapsule();
     drawGhost(blinky);
 
+    if (levelComplete) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+    ctx.fillRect(0, 280, canvas.width, 140);
+
+    ctx.fillStyle = "yellow";
+    ctx.font = "bold 42px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("LEVEL COMPLETE!", canvas.width / 2, 360);
+    }
+
     requestAnimationFrame(gameLoop);
 }
 document.getElementById("startButton").addEventListener("click", function() {
     enableGameAudio();
     restartGame();
+});
+
+// TEMPORARY QA SHORTCUT - REMOVE BEFORE SUBMISSION
+document.addEventListener("keydown", function(event) {
+    if (event.key === "t" && gameStarted && !gameOver) {
+        event.preventDefault();
+
+        levelComplete = true;
+
+        console.log("QA: LEVEL COMPLETE!");
+    }
 });
 
 gameLoop();

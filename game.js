@@ -14,8 +14,8 @@ const pacman = {
     y: 612.5,
     radius: 17,
     speed: 3,
-    direction: "LEFT",
-    nextDirection: "LEFT"
+    direction: "NONE",
+    nextDirection: "NONE"
 };
 
 // -------------------------
@@ -206,6 +206,7 @@ function handleGhostCollision(ghost) {
     if (powerMode) {
 
         addScore(200);
+        playEatGhostSound();
 
         ghost.x = ghost.startX;
         ghost.y = ghost.startY;
@@ -219,12 +220,16 @@ function handleGhostCollision(ghost) {
 
         lives--;
 
+        playDeathSound();
+
         document.getElementById("lives").textContent =
             lives;
 
         if (lives <= 0) {
 
             gameOver = true;
+            stopBackgroundMusic();
+            stopPowerSound();
 
             document.getElementById("finalScore").textContent =
                 score;
@@ -468,6 +473,12 @@ function getNextPosition(direction) {
 
 function updatePacman() {
 
+    // Stay still until the player chooses a direction
+    if (pacman.direction === "NONE" &&
+        pacman.nextDirection === "NONE") {
+        return;
+    }
+
     // Try the direction requested by the player
     const requestedMove = getNextPosition(
         pacman.nextDirection
@@ -564,7 +575,21 @@ let dotsEaten = 0;
 let cherryActive = false;
 let capsuleActive = false;
 let audioContext = null;
-let wakaToggle = false;
+let wakaToggle = false; 
+let gameStarted = false;
+
+function enableGameAudio() {
+    if (!audioContext) {
+        audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+}
+
+document.addEventListener("pointerdown", enableGameAudio);
+document.addEventListener("keydown", enableGameAudio);
 
 const cherry = {
     x: 332.5,
@@ -645,6 +670,7 @@ function eatDot() {
 function activatePowerMode() {
 
     powerMode = true;
+    playPowerSound();
 
     document.getElementById("status").textContent =
         "POWER MODE!";
@@ -659,6 +685,7 @@ function activatePowerMode() {
     powerTimer = setTimeout(function() {
 
         powerMode = false;
+        stopPowerSound();
 
         document.getElementById("status").textContent =
             "Use arrow keys to move";
@@ -873,6 +900,7 @@ function checkCherryCollision() {
         cherryActive = false;
 
         addScore(500);
+        playCherrySound();
     }
 }
 
@@ -894,6 +922,7 @@ function checkCapsuleCollision() {
         capsuleActive = false;
 
         lives++;
+        playExtraLifeSound();
 
         document.getElementById("lives").textContent = lives;
     }
@@ -904,8 +933,8 @@ function resetPacman() {
     pacman.x = 350;
     pacman.y = 612.5;
 
-    pacman.direction = "LEFT";
-    pacman.nextDirection = "LEFT";
+    pacman.direction = "NONE";
+    pacman.nextDirection = "NONE";
 
     blinky.x = blinky.startX;
     blinky.y = blinky.startY;
@@ -916,6 +945,14 @@ function resetPacman() {
 }
 
 function restartGame() {
+    gameStarted = true;
+
+    playStartSound();
+    isPaused = false;
+    stopPowerSound();
+    stopBackgroundMusic();
+    musicStep = 0;
+    startBackgroundMusic();
 
     score = 0;
     lives = 3;
@@ -948,15 +985,29 @@ function restartGame() {
 
     resetPacman();
 
-    requestAnimationFrame(gameLoop);
 }
 
-document
-    .getElementById("modalRestartButton")
-    .addEventListener(
-        "click",
-        restartGame
-    );
+document.getElementById("modalRestartButton").addEventListener("click", function() {
+    enableGameAudio();
+    restartGame();
+});
+
+document.getElementById("musicButton").addEventListener("click", function() {
+
+    musicEnabled = !musicEnabled;
+
+    if (musicEnabled) {
+        this.textContent = "MUSIC: ON";
+
+        if (gameStarted && !gameOver && !isPaused) {
+            startBackgroundMusic();
+        }
+    } else {
+        this.textContent = "MUSIC: OFF";
+        stopBackgroundMusic();
+    }
+});
+
 async function readSerialData() {
     const reader = serialPort.readable.getReader();
     const decoder = new TextDecoder();
@@ -993,10 +1044,18 @@ async function readSerialData() {
                     restartGame();
                     }
                 else if (direction === "PAUSE") {
-                        console.log("Arduino: PAUSE");
-                    isPaused = !isPaused;
-                    console.log("isPaused:", isPaused);
-                    }
+                console.log("Arduino: PAUSE");
+
+                isPaused = !isPaused;
+
+                if (isPaused) {
+                    stopBackgroundMusic();
+                } else {
+                    startBackgroundMusic();
+                }
+
+                console.log("isPaused:", isPaused);
+            }
 
             });
 
@@ -1047,32 +1106,23 @@ document
 
 function gameLoop() {
 
-    if (gameOver) {
-
-        drawMaze();
-        drawPacman();
-        drawGhost(blinky);
-
-        return;
-    }
-
-    if (isPaused) {
-        requestAnimationFrame(gameLoop);
-        return;
-    }
-
     ctx.clearRect(
         0,
         0,
         canvas.width,
         canvas.height
     );
-    updatePacman();
-    checkCherryCollision();
-    checkCapsuleCollision();
-    updateGhost(blinky);
-    handleGhostCollision(blinky);
 
+    // Update only after START
+    if (gameStarted && !gameOver && !isPaused) {
+        updatePacman();
+        checkCherryCollision();
+        checkCapsuleCollision();
+        updateGhost(blinky);
+        handleGhostCollision(blinky);
+    }
+
+    // Always draw the game
     drawMaze();
     drawPacman();
     drawCherry();
@@ -1081,7 +1131,10 @@ function gameLoop() {
 
     requestAnimationFrame(gameLoop);
 }
-
+document.getElementById("startButton").addEventListener("click", function() {
+    enableGameAudio();
+    restartGame();
+});
 
 gameLoop();
 
@@ -1116,4 +1169,247 @@ function playWakaSound() {
 
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.07);
+}
+
+function playDeathSound() {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+
+    oscillator.type = "square";
+
+    // Falling arcade sound
+    oscillator.frequency.setValueAtTime(600, now);
+    oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.5);
+}
+
+function playEatGhostSound() {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+
+    oscillator.type = "square";
+
+    // Rising arcade sound
+    oscillator.frequency.setValueAtTime(300, now);
+    oscillator.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.25);
+}
+
+function playCherrySound() {
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+    const notes = [523, 659, 784];
+
+    for (let i = 0; i < notes.length; i++) {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        const startTime = now + i * 0.1;
+
+        oscillator.type = "square";
+        oscillator.frequency.value = notes[i];
+
+        gain.gain.setValueAtTime(0.06, startTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            startTime + 0.12
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.12);
+    }
+}
+
+function playExtraLifeSound() {
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+    const notes = [440, 554, 659, 880];
+
+    for (let i = 0; i < notes.length; i++) {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        const startTime = now + i * 0.09;
+
+        oscillator.type = "sine";
+        oscillator.frequency.value = notes[i];
+
+        gain.gain.setValueAtTime(0.07, startTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            startTime + 0.15
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.15);
+    }
+}
+
+function playStartSound() {
+    if (!audioContext) {
+        audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+
+    const now = audioContext.currentTime;
+
+    const notes = [
+        523, 659, 784, 1047,
+        784, 1047, 1175, 1568
+    ];
+
+    for (let i = 0; i < notes.length; i++) {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        const startTime = now + i * 0.12;
+
+        oscillator.type = "square";
+        oscillator.frequency.value = notes[i];
+
+        gain.gain.setValueAtTime(0.05, startTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            startTime + 0.11
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.11);
+    }
+}
+
+let powerSoundInterval = null;
+
+function playPowerSound() {
+    if (!audioContext || powerSoundInterval !== null) {
+        return;
+    }
+
+    let highTone = false;
+
+    powerSoundInterval = setInterval(() => {
+        if (!powerMode || gameOver) {
+            stopPowerSound();
+            return;
+        }
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const now = audioContext.currentTime;
+
+        oscillator.type = "sawtooth";
+        oscillator.frequency.value = highTone ? 260 : 190;
+        highTone = !highTone;
+
+        gain.gain.setValueAtTime(0.025, now);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + 0.12
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(now);
+        oscillator.stop(now + 0.12);
+
+    }, 220);
+}
+
+function stopPowerSound() {
+    if (powerSoundInterval !== null) {
+        clearInterval(powerSoundInterval);
+        powerSoundInterval = null;
+    }
+}
+
+// ===== BACKGROUND MUSIC =====
+
+let musicInterval = null;
+let musicStep = 0;
+let musicEnabled = false;
+
+// Original retro arcade melody
+const musicNotes = [
+    523, 659, 784, 659,
+    587, 698, 880, 698,
+    659, 784, 988, 784,
+    587, 659, 784, 0
+];
+
+function playMusicNote(frequency) {
+    if (!audioContext || frequency === 0) return;
+
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.value = frequency;
+
+    gain.gain.setValueAtTime(0.012, now);
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        now + 0.13
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.13);
+}
+
+function startBackgroundMusic() {
+    if (!musicEnabled || musicInterval !== null) return;
+
+    musicInterval = setInterval(function() {
+        if (!gameStarted || gameOver || isPaused) return;
+
+        playMusicNote(musicNotes[musicStep]);
+        musicStep = (musicStep + 1) % musicNotes.length;
+    }, 180);
+}
+
+function stopBackgroundMusic() {
+    if (musicInterval !== null) {
+        clearInterval(musicInterval);
+        musicInterval = null;
+    }
 }

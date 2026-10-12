@@ -6,7 +6,7 @@
 
 const int JOYSTICK_X = 2;
 const int JOYSTICK_Y = 1;
-const int BLUE_BUTTON = 4;
+const int BLUE_BUTTON = 6;
 const int RED_BUTTON = 5;
 
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);

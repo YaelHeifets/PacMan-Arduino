@@ -197,18 +197,25 @@ void readJoystickAndButtons() {
 
   String direction = "CENTER";
 
+int xDeviation = abs(xValue - 3150);
+int yDeviation = abs(yValue - 3250);
+
+if (yDeviation > xDeviation) {
+    if (yValue > 3600) {
+        direction = "DOWN";
+    }
+    else if (yValue < 2400) {
+        direction = "UP";
+    }
+}
+else {
     if (xValue > 3600) {
         direction = "RIGHT";
     }
     else if (xValue < 2400) {
         direction = "LEFT";
     }
-    else if (yValue > 3600) {
-        direction = "DOWN";
-    }
-    else if (yValue < 2400) {
-        direction = "UP";
-    }
+}
 
   Serial.println(direction);
 

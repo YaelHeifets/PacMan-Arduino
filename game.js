@@ -171,7 +171,7 @@ function isWall(x, y) {
 
 function canPacmanMoveTo(x, y) {
 
-    const r = pacman.radius - 2;
+    const r = pacman.radius - 4;
 
     return (
         !isWall(x - r, y - r) &&
